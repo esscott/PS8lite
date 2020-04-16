@@ -186,8 +186,19 @@ MiscVal + MoSold + YrSold" %>%
 
 Fit one Random Forest model `model_rf` using any approach you want.
 
-```{r}
-
+```{r fitting randomForest directly}
+# Fit random forest:
+model_rf <- randomForest(
+  # Model formula
+  form = model_formula,
+  # Training data
+  data = training,
+  # At each node of tree, number of features/predictor variables to randomly
+  # choose from for splitting:
+  mtry = 2,
+  # Number of bagged (bootstrap aggregated) trees in your forest:
+  ntree = 100
+)
 ```
 
 
@@ -200,10 +211,77 @@ Fit one Random Forest model `model_rf` using any approach you want.
 
 Using `model_rf` make predictions and submit to Kaggle.
 
-```{r}
+```{r randomForest predict & submit}
+test <- test %>%
+  mutate(
+    logSalePrice_hat_rf = predict(object = model_rf, newdata = test),
+    SalePrice_hat_rf = exp(logSalePrice_hat_rf) -1
+  )
+glimpse(test)
 
+submission_rf <- test %>%
+  mutate(SalePrice = SalePrice_hat_rf) %>%
+  select(Id, SalePrice)
+write_csv(submission_rf, "submission_rf.csv")
 ```
 
+![](images/score_screenshot_rf.png){ width=100% }
 
-![](images/score_screenshot_naive.png){ width=100% }
+```{r fitting randomForest via caret, cache = TRUE, eval=FALSE, include=FALSE}
+# # Define cross-validation settings: 10-fold CV
+# fit_control <- trainControl(method = "cv", number = 10)
+# 
+# # Setup search grid of "tuning" parameters
+# mtry <- 2:5
+# tunegrid <- expand.grid(.mtry = mtry)
+# 
+# model_rf_caret <- caret::train(
+#   # Model formula
+#   form = model_formula,
+#   # Training data
+#   data = training, 
+#   # Set method to randomForests. Note: this is where you can switch out to
+#   # different methods
+#   method = "rf",
+#   # Score/error metric used:
+#   metric = "RMSE",
+#   # Cross-validation settings:
+#   trControl = fit_control,
+#   # Search grid of tuning parameters
+#   tuneGrid = tunegrid
+#   )
+# 
+# model_rf_caret
+```
+
+```{r caret predict & submit, eval=FALSE, include=FALSE}
+# test <- test %>% 
+#   mutate(
+#     logSalePrice_hat_rf_caret = predict(model_rf_caret, test),
+#     SalePrice_hat_rf_caret = exp(logSalePrice_hat_rf_caret) -1
+#   )
+# glimpse(test)
+# 
+# submission_rf_caret <- test %>%
+#   mutate(SalePrice = SalePrice_hat_rf_caret) %>%
+#   select(Id, SalePrice) 
+# write_csv(submission_rf_caret, "submission_rf_caret.csv")
+```
+
+```{r fitting randomForest via tidymodels, eval=FALSE, include=FALSE}
+# # Change outcome variable of model_formula to be a factor 
+# model_formula <- "as.factor(logSalePrice) ~ MSSubClass + LotFrontage + LotArea + 
+# OverallQual + OverallCond + YearBuilt + YearRemodAdd + MasVnrArea + BsmtFinSF1 + 
+# BsmtFinSF2 + BsmtUnfSF + TotalBsmtSF + FirstFlrSF + SecondFlrSF + LowQualFinSF + 
+# GrLivArea + BsmtFullBath + BsmtHalfBath + FullBath + HalfBath + BedroomAbvGr + 
+# KitchenAbvGr + TotRmsAbvGrd + Fireplaces + GarageYrBlt + GarageCars + GarageArea + 
+# WoodDeckSF + OpenPorchSF + EnclosedPorch + ThirdSsnPorch + ScreenPorch + PoolArea + 
+# MiscVal + MoSold + YrSold" %>% 
+#   as.formula()
+# 
+# # Fit model using tidymodels approach
+# model_rf <-  rand_forest(trees = 100, mode = "classification") %>%
+#   set_engine("randomForest") %>%
+#   fit(model_formula, data = training)
+```
 
